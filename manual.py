@@ -3,7 +3,7 @@ f = open("manual.txt", "r")
 from functools import reduce
 import re
 
-def findInteresingIndices(line, interestingIndices, regex = r"[^\.0-9\n]{1}"):
+def findInteresingIndices(line, interestingIndices, regex = r"[^\.0-9\n]{1}", flatten = True):
     if line is None:
         return
 
@@ -13,13 +13,18 @@ def findInteresingIndices(line, interestingIndices, regex = r"[^\.0-9\n]{1}"):
       index_before = index - 1 if index > 0 else None
       index_after = index + 1 if index < len(line) - 1 else None
 
-      interestingIndices.append(index)
+      currentIndices = [index]
 
       if index_before != None:
-        interestingIndices.append(index_before)
+        currentIndices.append(index_before)
 
       if index_after != None:
-        interestingIndices.append(index_after)
+        currentIndices.append(index_after)
+
+      if flatten:
+        interestingIndices.extend(currentIndices)
+      else:
+        interestingIndices.append(currentIndices)
 
 def getNumbers(line, interestingIndices):
   numbers = []
@@ -34,8 +39,7 @@ def getNumbers(line, interestingIndices):
 def getGearRatios(prevLine, currLine, nextLine, interestingIndices):
     total_sum = 0
 
-
-    for asteriskIndex in interestingIndices:
+    for asteriskIndices in interestingIndices:
         numbers = []
 
         for line in [prevLine, currLine, nextLine]:
@@ -43,16 +47,18 @@ def getGearRatios(prevLine, currLine, nextLine, interestingIndices):
                 continue
 
             for match in re.finditer(r'[0-9]+', line):
-                if match.start() <= asteriskIndex and match.end() > asteriskIndex:
-                    numbers.append(int(match.group()))
-                    break
+                for asteriskIndex in asteriskIndices:
+                    if match.start() <= asteriskIndex and match.end() > asteriskIndex:
+                        numbers.append(int(match.group()))
+                        break
 
         if len(numbers) == 2:
-            total_sum += sum(numbers)
+            print('found', numbers)
+            total_sum += reduce((lambda x, y: x * y), numbers)
 
     return total_sum
 
-def processFile():
+def processFileAsterisk():
     lines = []
     out_sum = 0
     for line in f:
@@ -67,9 +73,8 @@ def processFile():
 
         asteriskRegex = r"\*"
 
-        findInteresingIndices(currLine, interestingIndices, asteriskRegex)
+        findInteresingIndices(currLine, interestingIndices, asteriskRegex, False)
 
-        interestingIndices = list(dict.fromkeys(interestingIndices))
         print(interestingIndices)
 
         gear_ratios = getGearRatios(
@@ -101,7 +106,6 @@ def processFile():
         findInteresingIndices(nextLine, interestingIndices)
 
         interestingIndices = list(dict.fromkeys(interestingIndices))
-        print(interestingIndices)
 
         numbers = getNumbers(currLine, interestingIndices)
 
@@ -110,4 +114,4 @@ def processFile():
     print(out_sum)
 
 
-processFile()
+processFileAsterisk()
